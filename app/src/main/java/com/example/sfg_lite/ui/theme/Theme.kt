@@ -1,6 +1,5 @@
 package com.example.sfg_lite.ui.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -16,7 +15,7 @@ private val DarkColorScheme = darkColorScheme(
     onSecondary = ProDarkBackground,
     onTertiary = White,
     onBackground = White,
-    onSurface = White
+    onSurface = White,
 )
 
 private val LightColorScheme = lightColorScheme(

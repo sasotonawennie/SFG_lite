@@ -38,8 +38,8 @@ fun LoadingScreen(onLoadingFinished: () -> Unit) {
     }
 
     val launcher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { result ->
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) { _ ->
         // We proceed regardless of whether they were granted, 
         // but we wait for the user to interact with the dialog.
         permissionsGranted = true
@@ -55,6 +55,7 @@ fun LoadingScreen(onLoadingFinished: () -> Unit) {
         // Trigger permission request immediately on startup
         launcher.launch(permissionsToRequest)
         
+        @Suppress("UNUSED_VALUE")
         progress = 1f
         // Start dots animation
         while(true) {
@@ -70,7 +71,7 @@ fun LoadingScreen(onLoadingFinished: () -> Unit) {
 
     LaunchedEffect(animatedProgress, permissionsGranted) {
         // Only finish if both the 3s animation is done AND permissions were handled
-        if (animatedProgress >= 1f && permissionsGranted) {
+        if ((animatedProgress >= 1f) && permissionsGranted) {
             onLoadingFinished()
         }
     }
