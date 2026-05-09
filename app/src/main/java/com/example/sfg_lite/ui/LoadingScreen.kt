@@ -1,30 +1,37 @@
 package com.example.sfg_lite.ui
 
 import android.Manifest
+import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.sfg_lite.data.LicenseRepository
+import com.example.sfg_lite.data.LicenseState
 import kotlinx.coroutines.delay
 
 @Composable
 fun LoadingScreen(onLoadingFinished: () -> Unit) {
+    val context = LocalContext.current
+    val repository = remember { LicenseRepository(context) }
+    
     var progress by remember { mutableFloatStateOf(0f) }
     var dots by remember { mutableStateOf("") }
     var permissionsGranted by remember { mutableStateOf(false) }
+    var licenseState by remember { mutableStateOf<LicenseState?>(null) }
     
     val permissionsToRequest = remember {
         val list = mutableListOf<String>()
@@ -40,8 +47,6 @@ fun LoadingScreen(onLoadingFinished: () -> Unit) {
     val launcher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
     ) { _ ->
-        // We proceed regardless of whether they were granted, 
-        // but we wait for the user to interact with the dialog.
         permissionsGranted = true
     }
 
@@ -52,12 +57,12 @@ fun LoadingScreen(onLoadingFinished: () -> Unit) {
     )
 
     LaunchedEffect(Unit) {
-        // Trigger permission request immediately on startup
         launcher.launch(permissionsToRequest)
-        
-        @Suppress("UNUSED_VALUE")
         progress = 1f
-        // Start dots animation
+        
+        // Check license while animating
+        licenseState = repository.checkLicense()
+
         while(true) {
             delay(500)
             dots = when(dots) {
@@ -69,10 +74,11 @@ fun LoadingScreen(onLoadingFinished: () -> Unit) {
         }
     }
 
-    LaunchedEffect(animatedProgress, permissionsGranted) {
-        // Only finish if both the 3s animation is done AND permissions were handled
-        if ((animatedProgress >= 1f) && permissionsGranted) {
-            onLoadingFinished()
+    LaunchedEffect(animatedProgress, permissionsGranted, licenseState) {
+        if ((animatedProgress >= 1f) && permissionsGranted && licenseState != null) {
+            if (licenseState != LicenseState.EXPIRED && licenseState != LicenseState.ERROR) {
+                onLoadingFinished()
+            }
         }
     }
 
@@ -119,12 +125,44 @@ fun LoadingScreen(onLoadingFinished: () -> Unit) {
 
                 Spacer(modifier = Modifier.height(16.dp))
 
+                val statusText = when {
+                    !permissionsGranted -> "Waiting for permissions$dots"
+                    licenseState == null -> "Verifying license$dots"
+                    licenseState == LicenseState.EXPIRED -> "License Expired"
+                    licenseState == LicenseState.ERROR -> "Connection Error"
+                    else -> "Access Granted"
+                }
+
                 Text(
-                    text = if (!permissionsGranted) "Waiting for permissions$dots" else "Verifying license$dots",
+                    text = statusText,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f),
+                    color = if (licenseState == LicenseState.EXPIRED || licenseState == LicenseState.ERROR) 
+                        Color.Red else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f),
                     textAlign = TextAlign.Center
                 )
+
+                if (licenseState == LicenseState.EXPIRED || licenseState == LicenseState.ERROR) {
+                    Spacer(modifier = Modifier.height(24.dp))
+                    
+                    Text(
+                        text = "ID: ${repository.getSSAID()}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color.Red,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Button(
+                        onClick = {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.facebook.com/profile.php?id=61569711961578"))
+                            context.startActivity(intent)
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
+                    ) {
+                        Text("Contact Support")
+                    }
+                }
             }
         }
     }
