@@ -1,5 +1,8 @@
 [versions]
 agp = "9.2.1"
+compileSdk = "37"
+targetSdk = "37"
+minSdk = "29"
 coreKtx = "1.18.0"
 junit = "4.13.2"
 junitVersion = "1.1.5"
